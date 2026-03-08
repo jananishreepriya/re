@@ -1,0 +1,146 @@
+npm create vite@latest my-app -- --template react
+cd my-app
+npm install
+
+App.jsx
+import { useState } from "react";
+import "./App.css";
+
+export default function App() {
+  const [form, setForm] = useState({
+    fullName: "", email: "", mobile: "", college: "", cgpa: "",
+    domain: "", resume: null, agree: false
+  });
+  const [errors, setErrors] = useState({});
+
+  const handleChange = (e) => {
+    const { name, value, type, checked, files } = e.target;
+    setForm({
+      ...form,
+      [name]: type === "checkbox" ? checked : type === "file" ? files[0] : value
+    });
+  };
+
+  const validate = () => {
+    const err = {};
+    if (!form.fullName || form.fullName.length < 3) err.fullName = "Minimum 3 characters";
+    if (!/^\S+@\S+\.\S+$/.test(form.email)) err.email = "Invalid email";
+    if (!/^\d{10}$/.test(form.mobile)) err.mobile = "10 digits required";
+    if (!form.college) err.college = "College is required";
+    if (form.cgpa < 0 || form.cgpa > 10) err.cgpa = "CGPA must be 0–10";
+    if (!form.domain) err.domain = "Select a domain";
+    if (!form.resume) err.resume = "Upload your resume";
+    if (!form.agree) err.agree = "You must accept the terms";
+    return err;
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const validationErrors = validate();
+    setErrors(validationErrors);
+    if (Object.keys(validationErrors).length === 0) {
+      alert("Application submitted successfully!");
+      // optionally reset form here
+    }
+  };
+
+  return (
+    <div className="app form-page">
+      <h2>📋 Internship Application</h2>
+      <form onSubmit={handleSubmit}>
+        <input name="fullName" placeholder="Full Name" value={form.fullName} onChange={handleChange} />
+        {errors.fullName && <span className="error">{errors.fullName}</span>}
+
+        <input name="email" placeholder="Email" value={form.email} onChange={handleChange} />
+        {errors.email && <span className="error">{errors.email}</span>}
+
+        <input name="mobile" placeholder="Mobile Number" value={form.mobile} onChange={handleChange} />
+        {errors.mobile && <span className="error">{errors.mobile}</span>}
+
+        <input name="college" placeholder="College Name" value={form.college} onChange={handleChange} />
+        {errors.college && <span className="error">{errors.college}</span>}
+
+        <input type="number" name="cgpa" placeholder="CGPA (0–10)" value={form.cgpa} onChange={handleChange} />
+        {errors.cgpa && <span className="error">{errors.cgpa}</span>}
+
+        <select name="domain" value={form.domain} onChange={handleChange}>
+          <option value="">Select Domain</option>
+          <option value="Web">Web Development</option>
+          <option value="Data Science">Data Science</option>
+          <option value="AI">Artificial Intelligence</option>
+        </select>
+        {errors.domain && <span className="error">{errors.domain}</span>}
+
+        <input type="file" name="resume" onChange={handleChange} />
+        {errors.resume && <span className="error">{errors.resume}</span>}
+
+        <label className="checkbox">
+          <input type="checkbox" name="agree" checked={form.agree} onChange={handleChange} />
+          I accept the terms and conditions
+        </label>
+        {errors.agree && <span className="error">{errors.agree}</span>}
+
+        <button type="submit">Submit Application</button>
+      </form>
+    </div>
+  );
+}
+
+App.css
+body {
+  margin: 0;
+  background: lightgray;
+  font-family: system-ui, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.app {
+  background: white;
+  padding: 2rem;
+  border-radius: 20px;
+  width: 400px;
+  max-width: 95%;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+h2 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+input, select, button {
+  padding: 0.6rem;
+  border: 1px solid gray;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+button {
+  background: black;
+  color: white;
+  border: none;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.error {
+  color: darkred;
+  font-size: 0.8rem;
+  margin-top: -0.3rem;
+}
