@@ -141,3 +141,39 @@ hospital-api/
   │   └── logger.js
   └── routes/
       └── appointmentRoutes.js
+
+🪟 For Windows Command Prompt (CMD)
+
+
+cmd
+:: 1. Get all doctors
+curl http://localhost:3000/api/doctors
+
+:: 2. Get all appointments
+curl http://localhost:3000/api/appointments
+
+:: 3. Create a new appointment (POST)
+curl -X POST http://localhost:3000/api/appointments ^
+  -H "Content-Type: application/json" ^
+  -d "{\"patientName\":\"Eve\",\"doctorId\":1}"
+
+:: 4. Cancel an appointment (DELETE) – replace 1 with an existing ID
+curl -X DELETE http://localhost:3000/api/appointments/1
+
+🔷 For Windows PowerShell
+Alternatively, write the whole command in one line.
+
+powershell
+# 1. Get all doctors
+curl http://localhost:3000/api/doctors
+
+# 2. Get all appointments
+curl http://localhost:3000/api/appointments
+
+# 3. Create a new appointment (POST)
+curl -X POST http://localhost:3000/api/appointments `
+  -H "Content-Type: application/json" `
+  -d '{"patientName":"Eve","doctorId":1}'
+
+# 4. Cancel an appointment (DELETE)
+curl -X DELETE http://localhost:3000/api/appointments/1
