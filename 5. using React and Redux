@@ -1,0 +1,180 @@
+npm create vite@latest my-app -- --template react
+cd my-app
+npm install
+First, install the required packages: npm install @reduxjs/toolkit react-redux
+APP.jsx
+import { configureStore, createSlice } from '@reduxjs/toolkit';
+import { Provider, useSelector, useDispatch } from 'react-redux';
+import { useState } from 'react';
+import './App.css';
+
+// ---------- Redux slice ----------
+const tasksSlice = createSlice({
+  name: 'tasks',
+  initialState: [],
+  reducers: {
+    addTask: (state, action) => {
+      state.push({ id: Date.now(), text: action.payload, done: false });
+    },
+    toggleTask: (state, action) => {
+      const task = state.find(t => t.id === action.payload);
+      if (task) task.done = !task.done;
+    },
+    deleteTask: (state, action) => {
+      return state.filter(t => t.id !== action.payload);
+    }
+  }
+});
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const { addTask, toggleTask, deleteTask } = tasksSlice.actions;
+
+// ---------- Redux store ----------
+const store = configureStore({
+  reducer: tasksSlice.reducer
+});
+
+// ---------- Task component ----------
+function TaskApp() {
+  const [input, setInput] = useState('');
+  const tasks = useSelector(state => state);
+  const dispatch = useDispatch();
+
+  const handleAdd = () => {
+    if (input.trim()) {
+      dispatch(addTask(input.trim()));
+      setInput('');
+    }
+  };
+
+  return (
+    <div className="app task-tracker">
+      <h2>✅ Smart Task Tracker</h2>
+      <div className="add-task">
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          placeholder="Enter a new task..."
+          onKeyDown={e => e.key === 'Enter' && handleAdd()}
+        />
+        <button onClick={handleAdd}>Add</button>
+      </div>
+
+      <ul className="task-list">
+        {tasks.map(task => (
+          <li key={task.id}>
+            <span
+              onClick={() => dispatch(toggleTask(task.id))}
+              style={{ textDecoration: task.done ? 'line-through' : 'none', cursor: 'pointer' }}
+            >
+              {task.text}
+            </span>
+            <button onClick={() => dispatch(deleteTask(task.id))}>✕</button>
+          </li>
+        ))}
+      </ul>
+
+      {tasks.length === 0 && <p className="empty">No tasks yet. Add one above!</p>}
+    </div>
+  );
+}
+
+// ---------- Wrap with Provider ----------
+export default function App() {
+  return (
+    <Provider store={store}>
+      <TaskApp />
+    </Provider>
+  );
+}
+
+APP.css
+body {
+  margin: 0;
+  background: lightgray;
+  font-family: system-ui, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.app.task-tracker {
+  background: white;
+  padding: 2rem;
+  border-radius: 24px;
+  width: 450px;
+  max-width: 95%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.add-task {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1.5rem 0;
+}
+
+.add-task input {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  border: 1px solid gray;
+  border-radius: 40px;
+  font-size: 1rem;
+}
+
+.add-task button {
+  background: black;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: 40px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.task-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+}
+
+.task-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid lightgray;
+}
+
+.task-list li button {
+  background: darkred;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty {
+  color: gray;
+  margin-top: 1rem;
+}
+
+Main.jsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App.jsx';
+import './App.css';        // main styles
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
