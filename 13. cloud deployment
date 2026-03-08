@@ -1,0 +1,352 @@
+Node.js (v18 or later) – Download
+A GitHub account – github.com
+A Render account – render.com (sign up with GitHub)
+
+Open a terminal and run:
+
+mkdir student-admission
+cd student-admission
+mkdir backend frontend
+
+Initialize backend:
+
+cd backend
+npm init -y
+
+Install required packages
+
+npm install express cors sqlite3
+
+server.js inside the backend
+const express = require('express');
+const cors = require('cors');
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// CORS – allow frontend origin from environment variable
+const allowedOrigin = process.env.FRONTEND_URL || 'http://localhost:5173';
+app.use(cors({ origin: allowedOrigin }));
+app.use(express.json());
+
+// Database path – use environment variable if provided (for persistent volume)
+const dbPath = process.env.DB_PATH || path.join(__dirname, 'database.db');
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    console.error('Database connection error:', err.message);
+  } else {
+    console.log('Connected to SQLite database at', dbPath);
+  }
+});
+
+// Create students table
+db.run(`
+  CREATE TABLE IF NOT EXISTS students (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL
+  )
+`);
+
+// GET all students
+app.get('/users', (req, res) => {
+  db.all('SELECT * FROM students', [], (err, rows) => {
+    if (err) {
+      console.error('Error fetching students:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+    res.json(rows);
+  });
+});
+
+// POST a new student
+app.post('/add-user', (req, res) => {
+  const { name, phone } = req.body;
+  if (!name || !phone) {
+    return res.status(400).json({ error: 'Name and phone are required' });
+  }
+  db.run(
+    'INSERT INTO students (name, phone) VALUES (?, ?)',
+    [name, phone],
+    function(err) {
+      if (err) {
+        console.error('Database insert error:', err.message);
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ message: 'Student added', id: this.lastID });
+    }
+  );
+});
+
+// DELETE a student by ID
+app.delete('/delete-user/:id', (req, res) => {
+  const id = req.params.id;
+  db.run('DELETE FROM students WHERE id = ?', id, function(err) {
+    if (err) {
+      console.error('Error deleting student:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+    res.json({ message: 'Student removed' });
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`Backend running on port ${PORT}`);
+});
+
+package.json
+"scripts": {
+  "start": "node server.js",
+  "test": "echo \"Error: no test specified\" && exit 1"
+}
+
+Create the React app with Vite:
+
+cd ..  
+npm create vite@latest frontend -- --template react
+
+frontend :
+cd frontend
+npm install axios
+
+src/App.jsx
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+import './App.css';
+
+// Use environment variable for API URL (set later in deployment)
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+function App() {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [students, setStudents] = useState([]);
+
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const res = await axios.get(`${API}/users`);
+        setStudents(res.data);
+      } catch (err) {
+        console.error('Failed to fetch students:', err);
+      }
+    };
+    fetchStudents();
+  }, []);
+
+  const addStudent = async () => {
+    if (!name.trim() || !phone.trim()) return;
+    try {
+      await axios.post(`${API}/add-user`, { name, phone });
+      setName('');
+      setPhone('');
+      // Refresh list after adding
+      const res = await axios.get(`${API}/users`);
+      setStudents(res.data);
+    } catch (err) {
+      console.error('Failed to add student:', err);
+      if (err.response) {
+        alert(`Failed to add student: ${err.response.status} - ${JSON.stringify(err.response.data)}`);
+      } else if (err.request) {
+        alert('Failed to add student: No response from server');
+      } else {
+        alert('Failed to add student: ' + err.message);
+      }
+    }
+  };
+
+  const deleteStudent = async (id) => {
+    try {
+      await axios.delete(`${API}/delete-user/${id}`);
+      const res = await axios.get(`${API}/users`);
+      setStudents(res.data);
+    } catch (err) {
+      console.error('Failed to delete student:', err);
+      alert('Failed to delete student. Please try again.');
+    }
+  };
+
+  return (
+    <div className="app">
+      <div className="card">
+        <h2>📝 Student Admission</h2>
+        <div className="form">
+          <input
+            type="text"
+            placeholder="Student Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Phone Number"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+          <button onClick={addStudent}>Add Student</button>
+        </div>
+
+        <h3>Admission Records</h3>
+        {students.length === 0 ? (
+          <p className="empty">No students yet. Add one above!</p>
+        ) : (
+          <ul className="student-list">
+            {students.map((s) => (
+              <li key={s.id}>
+                <span>{s.name} – {s.phone}</span>
+                <button onClick={() => deleteStudent(s.id)}>✕</button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default App;
+
+src/App.css
+body {
+  margin: 0;
+  background: lightgray;
+  font-family: system-ui, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.app {
+  text-align: center;
+}
+
+.card {
+  background: white;
+  padding: 2rem;
+  border-radius: 24px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  width: 450px;
+}
+
+h2 {
+  color: black;
+  margin-bottom: 1rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+input {
+  padding: 0.7rem;
+  border: 1px solid gray;
+  border-radius: 40px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+button {
+  background: black;
+  color: white;
+  border: none;
+  padding: 0.7rem;
+  border-radius: 40px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+button:hover {
+  background: dimgray;
+}
+
+h3 {
+  color: black;
+  margin: 1rem 0;
+}
+
+.empty {
+  color: gray;
+}
+
+.student-list {
+  list-style: none;
+  padding: 0;
+}
+
+.student-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  border-bottom: 1px solid lightgray;
+}
+
+.student-list li button {
+  background: red;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+}
+
+Terminal 1 – Backend
+
+cd backend
+node server.js
+
+Terminal 2 – Frontend
+
+cd frontend
+npm run dev
+
+Prepare for Deployment
+Push Code to GitHub:
+
+git config --global user.name "Your Full Name"
+git config --global user.email "your.email@example.com"
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin https://github.com/yourusername/student-admission.git
+git push -u origin main
+
+git rm -r --cached backend/node_modules
+git commit -m "Remove node_modules from repo"
+git push
+
+Deploy Backend as a Web Service
+New +" → "Web Service
+Name	student-admission-backend
+Root Directory - 	backend
+Environment -	Node
+Build Command	- npm install
+Start Command	- node server.js
+
+Key	- FRONTEND_URL	
+Value - (you'll set this after frontend deploy – for now use http://localhost:5173)
+
+
+ Deploy Frontend as a Static Site
+ "New +" → "Static Site"
+
+Field	Value
+Name	- student-admission-frontend
+Root Directory	- frontend
+Build Command -	npm install && npm run build
+Publish Directory -	dist
+
+
+Key	- VITE_API_URL	
+Value - https://student-admission-backend.onrender.com (your backend URL – no trailing slash)
+
+Go to the "Environment" tab - FRONTEND_URL variable – replace the placeholder with your actual frontend URL
+"Save Changes"
