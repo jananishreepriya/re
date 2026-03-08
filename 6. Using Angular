@@ -1,0 +1,190 @@
+download from nodejs.org:
+node -v
+npm -v
+Install Angular CLI globally:
+npm install -g @angular/cli
+
+cretae the project:
+ng new my-app --standalone --routing false --style css 
+yes and none options
+cd my-app
+(or)
+ng new job-application --standalone --routing false --style css
+cd job-application
+Run: npm start
+
+src/app/app.ts
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule, NgForm } from '@angular/forms';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  templateUrl: './app.html',
+  styleUrls: ['./app.css']
+})
+export class AppComponent {
+  applicant: {
+    name: string;
+    email: string;
+    phone: string;
+    position: string;
+    exp: string;
+    skills: string[];
+    agree: boolean;
+  } = {
+    name: '',
+    email: '',
+    phone: '',
+    position: '',
+    exp: 'Fresher',
+    skills: [],
+    agree: false
+  };
+
+  positions = ['Frontend', 'Backend', 'Fullstack'];
+  skillsList = ['JavaScript', 'Angular', 'React'];
+
+  onSkillChange(event: any, skill: string) {
+    if (event.target.checked) {
+      this.applicant.skills.push(skill);
+    } else {
+      this.applicant.skills = this.applicant.skills.filter(s => s !== skill);
+    }
+  }
+
+  submitForm(form: NgForm) {
+    if (form.valid && this.applicant.agree) {
+      alert('✅ Submitted!\n' + JSON.stringify(this.applicant, null, 2));
+      form.resetForm({ exp: 'Fresher', skills: [], agree: false });
+    }
+  }
+}
+
+export { AppComponent as App };
+
+src/app/app.html
+<div class="container">
+  <h2>✨ Quick Job Apply</h2>
+  <form #f="ngForm" (ngSubmit)="submitForm(f)">
+    <input type="text" name="name" [(ngModel)]="applicant.name" placeholder="Full name" required>
+    <br> &nbsp;
+    <input type="email" name="email" [(ngModel)]="applicant.email" placeholder="Email" required email>
+    <br> &nbsp;
+    <input type="tel" name="phone" [(ngModel)]="applicant.phone" placeholder="Phone (10 digits)" required pattern="[0-9]{10}">
+    <br> &nbsp;
+
+    <label>Position</label>
+    <select name="position" [(ngModel)]="applicant.position" required>
+      <option value="">Select</option>
+      <option *ngFor="let p of positions">{{p}}</option>
+    </select>
+
+    <label>Experience</label>
+    <div class="radio-group">
+      <label><input type="radio" name="exp" value="Fresher" [(ngModel)]="applicant.exp"> Fresher</label>
+      <label><input type="radio" name="exp" value="Experienced" [(ngModel)]="applicant.exp"> Experienced</label>
+    </div>
+
+    <label>Skills</label>
+    <div class="checkbox-group" *ngFor="let skill of skillsList">
+      <label><input type="checkbox" [value]="skill" (change)="onSkillChange($event, skill)"> {{skill}}</label>
+    </div>
+
+    <div class="agree">
+      <input type="checkbox" name="agree" [(ngModel)]="applicant.agree" required>
+      <span>I confirm the information is correct</span>
+    </div>
+
+    <button type="submit" [disabled]="f.invalid || !applicant.agree">Apply Now</button>
+  </form>
+</div>
+
+src/app/app.css
+.container {
+  width: 500px;
+  margin: 2rem auto;
+  background: white;
+  padding: 2rem;
+  border-radius: 24px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  font-family: system-ui, sans-serif;
+}
+
+h2 {
+  text-align: center;
+  color: black;
+  margin-bottom: 1.5rem;
+}
+
+label {
+  display: block;
+  margin: 1rem 0 0.3rem;
+  font-weight: 500;
+}
+
+input, select {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 1px solid gray;
+  border-radius: 40px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.radio-group, .checkbox-group {
+  display: flex;
+  gap: 2rem;
+  margin: 0.5rem 0 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.radio-group label, .checkbox-group label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+.radio-group input, .checkbox-group input {
+  width: auto;
+  margin: 0;
+}
+
+.agree {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 1.5rem 0;
+}
+
+.agree input {
+  width: auto;
+  margin: 0;
+}
+
+button {
+  width: 100%;
+  padding: 0.8rem;
+  background: black;
+  color: white;
+  border: none;
+  border-radius: 40px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+button:hover:not(:disabled) {
+  background: dimgray;
+}
+
+button:disabled {
+  background: lightgray;
+  cursor: not-allowed;
+}
