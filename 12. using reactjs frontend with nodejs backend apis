@@ -1,0 +1,201 @@
+placement-registration/
+  ├── backend/          (Node.js + Express API)
+  │   ├── server.js
+  │   ├── students.json (will be auto‑created)
+  │   └── package.json
+  └── frontend/         (React app created with Vite)
+      ├── src/
+      │   ├── App.jsx
+      │   └── App.css
+      ├── package.json
+      └── ...
+
+Open a terminal and run:
+
+mkdir placement-registration
+cd placement-registration
+
+mkdir backend
+cd backend
+npm init -y
+npm install express cors
+
+server.js
+const express = require('express');
+const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
+
+const app = express();
+const PORT = 5000;
+
+// Middleware
+app.use(cors());           // allow requests from React frontend
+app.use(express.json());   // parse JSON bodies
+
+// Path to the JSON file
+const filePath = path.join(__dirname, 'students.json');
+
+// Create the file if it doesn't exist
+if (!fs.existsSync(filePath)) {
+  fs.writeFileSync(filePath, '[]');
+}
+
+// POST endpoint to register a new student
+app.post('/register', (req, res) => {
+  try {
+    const newStudent = req.body;
+    const data = fs.readFileSync(filePath);
+    const students = JSON.parse(data);
+    students.push(newStudent);
+    fs.writeFileSync(filePath, JSON.stringify(students, null, 2));
+    res.status(200).send('Student registered successfully');
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Server error');
+  }
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Backend running at http://localhost:${PORT}`);
+});
+
+Open a new terminal 
+nav back to placement-registration
+cd ..   
+npm create vite@latest frontend -- --template react
+cd frontend
+npm install
+npm install axios  
+
+App.jsx
+import { useState } from 'react';
+import axios from 'axios';
+import './App.css';
+
+function App() {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    department: ''
+  });
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post('http://localhost:5000/register', formData);
+      alert('Registered successfully!');
+      setFormData({ name: '', email: '', department: '' });
+    } catch (error) { // eslint-disable-line no-unused-vars
+      alert('Registration failed. Please try again.');
+    }
+  };
+
+  return (
+    <div className="app">
+      <div className="card">
+        <h2>🎓 Placement Registration</h2>
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            name="name"
+            placeholder="Full Name"
+            value={formData.name}
+            onChange={handleChange}
+            required
+          />
+          <input
+            type="email"
+            name="email"
+            placeholder="Email Address"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
+          <input
+            type="text"
+            name="department"
+            placeholder="Department"
+            value={formData.department}
+            onChange={handleChange}
+            required
+          />
+          <button type="submit">Register</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export default App;
+
+App.css
+body {
+  margin: 0;
+  background: lightgray;
+  font-family: system-ui, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.app {
+  text-align: center;
+}
+
+.card {
+  background: white;
+  padding: 2rem;
+  border-radius: 24px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  width: 350px;
+}
+
+h2 {
+  color: black;
+  margin-bottom: 1.5rem;
+}
+
+input {
+  width: 100%;
+  padding: 0.7rem;
+  margin: 0.5rem 0;
+  border: 1px solid gray;
+  border-radius: 40px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+button {
+  width: 100%;
+  padding: 0.8rem;
+  background: black;
+  color: white;
+  border: none;
+  border-radius: 40px;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+
+button:hover {
+  background: dimgray;
+}
+
+Terminal 1 – Start the backend:
+
+cd placement-registration/backend
+node server.js
+
+Terminal 2 – Start the frontend:
+
+cd placement-registration/frontend
+npm run dev
+
+note: data is saved in backend/students.json (registered data)
