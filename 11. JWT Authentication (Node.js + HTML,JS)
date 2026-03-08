@@ -4,7 +4,6 @@
 mkdir online-exam-portal
 cd online-exam-portal
 
-
 2. Initialize npm and install dependencies
 
 npm init -y
