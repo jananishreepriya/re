@@ -1,0 +1,184 @@
+mkdir hospital-app
+cd hospital-app
+npm init -y
+npm install express
+for run: node server.js
+index.html - AngularJS
+<!DOCTYPE html>
+<html ng-app="hospitalApp">
+<head>
+  <title>Hospital Management System</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      background: lightgray;
+      font-family: system-ui, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .container {
+      background: white;
+      width: 600px;
+      max-width: 95%;
+      padding: 2rem;
+      border-radius: 24px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    h1 {
+      color: black;
+      margin-bottom: 1.5rem;
+    }
+    h2 {
+      color: black;
+      margin: 1.5rem 0 1rem;
+      text-align: left;
+    }
+    input {
+      padding: 0.6rem;
+      margin: 0.3rem 0.5rem 1rem 0;
+      width: 30%;
+      border: 1px solid gray;
+      border-radius: 40px;
+      font-size: 1rem;
+    }
+    button {
+      background: black;
+      color: white;
+      border: none;
+      padding: 0.6rem 1.5rem;
+      border-radius: 40px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    button:hover {
+      background: dimgray;
+    }
+    table {
+      width: 100%;
+      margin-top: 1rem;
+      border-collapse: collapse;
+    }
+    th {
+      background: black;
+      color: white;
+      padding: 0.6rem;
+    }
+    td {
+      border: 1px solid lightgray;
+      padding: 0.5rem;
+      text-align: center;
+    }
+    tr:nth-child(even) {
+      background: whitesmoke;
+    }
+  </style>
+</head>
+<body ng-controller="MainController as ctrl">
+  <div class="container">
+    <h1>🏥 Hospital Management</h1>
+
+    <h2>Add Patient</h2>
+    <input ng-model="ctrl.newPatient.name" placeholder="Name">
+    <input ng-model="ctrl.newPatient.age" placeholder="Age">
+    <input ng-model="ctrl.newPatient.gender" placeholder="Gender">
+    <button ng-click="ctrl.addPatient()">Add Patient</button>
+
+    <h2>Patient List</h2>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Name</th><th>Age</th><th>Gender</th></tr>
+      </thead>
+      <tbody>
+        <tr ng-repeat="patient in ctrl.patients">
+          <td>{{patient.id}}</td>
+          <td>{{patient.name}}</td>
+          <td>{{patient.age}}</td>
+          <td>{{patient.gender}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    // AngularJS module
+    angular.module('hospitalApp', [])
+
+      // Service (factory) for API calls
+      .factory('PatientService', function($http) {
+        const baseUrl = ''; // empty because API is on same origin
+
+        return {
+          getPatients: function() {
+            return $http.get(baseUrl + '/patients');
+          },
+          addPatient: function(patient) {
+            return $http.post(baseUrl + '/patients', patient);
+          }
+        };
+      })
+
+      // Controller using the service
+      .controller('MainController', function(PatientService) {
+        const ctrl = this;
+        ctrl.patients = [];
+        ctrl.newPatient = {};
+
+        // Load patients on startup
+        function loadPatients() {
+          PatientService.getPatients().then(function(response) {
+            ctrl.patients = response.data;
+          });
+        }
+        loadPatients();
+
+        // Add new patient
+        ctrl.addPatient = function() {
+          if (!ctrl.newPatient.name || !ctrl.newPatient.age || !ctrl.newPatient.gender) {
+            return;
+          }
+          PatientService.addPatient(ctrl.newPatient).then(function() {
+            ctrl.newPatient = {};      // clear form
+            loadPatients();            // refresh list
+          });
+        };
+      });
+  </script>
+</body>
+</html>
+
+server.js
+const express = require('express');
+const app = express();
+const path = require('path');
+
+app.use(express.json());
+app.use(express.static(__dirname)); // serves index.html
+
+let patients = [];
+let id = 1;
+
+// Get all patients
+app.get('/patients', (req, res) => {
+  res.json(patients);
+});
+
+// Add a new patient
+app.post('/patients', (req, res) => {
+  const patient = {
+    id: id++,
+    name: req.body.name,
+    age: req.body.age,
+    gender: req.body.gender
+  };
+  patients.push(patient);
+  res.json(patient);
+});
+
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
+});
