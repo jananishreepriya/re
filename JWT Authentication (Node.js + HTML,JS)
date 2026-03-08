@@ -1,0 +1,392 @@
+
+1. Create the project folder
+
+mkdir online-exam-portal
+cd online-exam-portal
+
+
+2. Initialize npm and install dependencies
+
+npm init -y
+npm install express jsonwebtoken bcryptjs cors
+
+3. Create `server.js`
+
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const cors = require('cors');
+const path = require('path');
+
+const app = express();
+const PORT = 5000;
+const SECRET_KEY = 'exam_secret_key'; // In production, use an environment variable
+
+// Middleware
+app.use(express.json());
+app.use(cors());
+app.use(express.static(__dirname)); // Serves index.html from the root
+
+// In‑memory user storage (replace with a database in production)
+let users = [];
+
+// Test route
+app.get('/', (req, res) => {
+  res.send('Online Exam Portal API is running');
+});
+
+// ==================== AUTH ENDPOINTS ====================
+
+// Register a new user
+app.post('/register', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ message: 'All fields required' });
+  }
+
+  const userExists = users.find(u => u.username === username);
+  if (userExists) {
+    return res.status(400).json({ message: 'User already exists' });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  users.push({ username, password: hashedPassword });
+  res.json({ message: 'User registered successfully' });
+});
+
+// Login – returns a JWT token
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  const user = users.find(u => u.username === username);
+  if (!user) {
+    return res.status(400).json({ message: 'Invalid username' });
+  }
+
+  const validPassword = await bcrypt.compare(password, user.password);
+  if (!validPassword) {
+    return res.status(400).json({ message: 'Invalid password' });
+  }
+
+  const token = jwt.sign(
+    { username: user.username },
+    SECRET_KEY,
+    { expiresIn: '1h' }
+  );
+
+  res.json({ message: 'Login successful', token });
+});
+
+// ==================== PROTECTED ROUTE ====================
+
+// Middleware to verify JWT token
+function verifyToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    return res.status(401).json({ message: 'Access denied. No token provided.' });
+  }
+
+  jwt.verify(token, SECRET_KEY, (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ message: 'Invalid or expired token' });
+    }
+    req.user = decoded;
+    next();
+  });
+}
+
+// Protected exam route – returns exam questions
+app.get('/exam', verifyToken, (req, res) => {
+  // Static exam questions (in production, fetch from DB)
+  const exam = [
+    {
+      id: 1,
+      question: 'What is 5 + 5?',
+      options: ['8', '9', '10', '11'],
+      answer: '10'
+    },
+    {
+      id: 2,
+      question: 'What does JWT stand for?',
+      options: [
+        'Java Web Token',
+        'JSON Web Token',
+        'JavaScript Web Token',
+        'Joint Web Token'
+      ],
+      answer: 'JSON Web Token'
+    }
+  ];
+  res.json({ message: `Welcome ${req.user.username}`, exam });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
+});
+
+
+4. Create the frontend – `index.html`
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Online Exam Portal</title>
+  <style>
+    body {
+      margin: 0;
+      background: lightgray;
+      font-family: system-ui, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .container {
+      background: white;
+      width: 450px;
+      padding: 2rem;
+      border-radius: 24px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+    h2 {
+      color: black;
+      margin-bottom: 1.5rem;
+    }
+    h3 {
+      color: black;
+      margin: 1.5rem 0 0.5rem;
+    }
+    input {
+      width: 100%;
+      padding: 0.7rem;
+      margin: 0.5rem 0;
+      border: 1px solid gray;
+      border-radius: 40px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    button {
+      background: black;
+      color: white;
+      border: none;
+      padding: 0.7rem 1.5rem;
+      border-radius: 40px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin: 0.5rem 0.2rem;
+    }
+    button:hover {
+      background: dimgray;
+    }
+    hr {
+      margin: 1.5rem 0;
+      border: 1px solid lightgray;
+    }
+    #message {
+      color: red;
+      margin-top: 0.5rem;
+    }
+    #examSection {
+      display: none;
+      text-align: left;
+    }
+    .question {
+      margin: 1rem 0;
+      padding: 0.5rem;
+      border: 1px solid lightgray;
+      border-radius: 12px;
+    }
+    .options {
+      list-style: none;
+      padding: 0;
+    }
+    .options li {
+      margin: 0.3rem 0;
+    }
+    .options input {
+      width: auto;
+      margin-right: 0.5rem;
+    }
+    .logout-btn {
+      background: red;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>📝 Online Exam Portal</h2>
+
+    <!-- Registration Form -->
+    <h3>Register</h3>
+    <input type="text" id="regUsername" placeholder="Username">
+    <input type="password" id="regPassword" placeholder="Password">
+    <button onclick="register()">Register</button>
+
+    <hr>
+
+    <!-- Login Form -->
+    <h3>Login</h3>
+    <input type="text" id="loginUsername" placeholder="Username">
+    <input type="password" id="loginPassword" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <p id="message"></p>
+
+    <hr>
+
+    <!-- Exam Section (initially hidden) -->
+    <div id="examSection">
+      <h3>Exam Questions</h3>
+      <div id="questions"></div>
+      <button onclick="submitExam()">Submit Exam</button>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:5000';
+    let correctAnswers = {};
+
+    // Register a new user
+    async function register() {
+      const username = document.getElementById('regUsername').value;
+      const password = document.getElementById('regPassword').value;
+
+      if (!username || !password) {
+        alert('Please fill all fields');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_URL}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        alert(data.message);
+      } catch (err) {
+        alert('Registration failed: ' + err.message);
+      }
+    }
+
+    // Login and store token
+    async function login() {
+      const username = document.getElementById('loginUsername').value;
+      const password = document.getElementById('loginPassword').value;
+
+      if (!username || !password) {
+        alert('Please fill all fields');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_URL}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          localStorage.setItem('token', data.token);
+          document.getElementById('message').innerText = 'Login successful!';
+          loadExam();
+        } else {
+          document.getElementById('message').innerText = data.message;
+        }
+      } catch (err) {
+        document.getElementById('message').innerText = 'Login error: ' + err.message;
+      }
+    }
+
+    // Load exam questions (protected)
+    async function loadExam() {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      try {
+        const res = await fetch(`${API_URL}/exam`, {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          // Hide login/register forms, show exam section
+          document.querySelectorAll('h3, input, button:not(#examSection button)').forEach(el => {
+            if (el.closest('#examSection')) return;
+            el.style.display = 'none';
+          });
+          document.querySelector('hr').style.display = 'none';
+          document.getElementById('examSection').style.display = 'block';
+
+          // Render questions
+          const questionsDiv = document.getElementById('questions');
+          questionsDiv.innerHTML = '';
+          data.exam.forEach(q => {
+            correctAnswers[q.id] = q.answer;
+            const qDiv = document.createElement('div');
+            qDiv.className = 'question';
+            qDiv.innerHTML = `
+              <p><strong>${q.question}</strong></p>
+              <ul class="options">
+                ${q.options.map(opt => `
+                  <li>
+                    <label>
+                      <input type="radio" name="q${q.id}" value="${opt}">
+                      ${opt}
+                    </label>
+                  </li>
+                `).join('')}
+              </ul>
+            `;
+            questionsDiv.appendChild(qDiv);
+          });
+        } else {
+          alert('Failed to load exam: ' + data.message);
+          logout();
+        }
+      } catch (err) {
+        alert('Error loading exam: ' + err.message);
+      }
+    }
+
+    // Submit exam and calculate score
+    function submitExam() {
+      let score = 0;
+      let total = Object.keys(correctAnswers).length;
+
+      for (let qId in correctAnswers) {
+        const selected = document.querySelector(`input[name="q${qId}"]:checked`);
+        if (selected && selected.value === correctAnswers[qId]) {
+          score++;
+        }
+      }
+
+      alert(`Your Score: ${score} / ${total}`);
+    }
+
+    // Logout – remove token and reload page
+    function logout() {
+      localStorage.removeItem('token');
+      location.reload();
+    }
+
+    // Auto‑login if token exists (on page load)
+    window.onload = function() {
+      if (localStorage.getItem('token')) {
+        loadExam();
+      }
+    };
+  </script>
+</body>
+</html>
+
+5. Run the application
+
+node server.js
+
