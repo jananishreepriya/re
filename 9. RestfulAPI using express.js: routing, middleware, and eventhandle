@@ -1,0 +1,143 @@
+1. Create the project folder and files
+Open a terminal.
+
+mkdir hospital-api
+cd hospital-api
+
+Create the subfolders:
+mkdir middleware routes
+
+2. Initialize npm and install Express
+
+npm init -y
+npm install express
+
+3. Start the server
+
+node index.js
+Server running at http://localhost:3000
+Keep this terminal window open – the server must stay running.
+
+✅ 1. Get all doctors
+
+curl http://localhost:3000/api/doctors
+
+✅ 2. Get all appointments
+
+curl http://localhost:3000/api/appointments
+
+✅ 3. Create a new appointment (POST)
+
+curl -X POST http://localhost:3000/api/appointments ^
+  -H "Content-Type: application/json" ^
+  -d "{\"patientName\":\"Eve\",\"doctorId\":1}"
+
+✅ 4. Cancel an appointment (DELETE)
+Replace 1 with an existing appointment ID.
+
+curl -X DELETE http://localhost:3000/api/appointments/1
+
+✅ 5. Verify the list after deletion
+
+curl http://localhost:3000/api/appointments
+The deleted appointment should no longer appear.
+
+
+✅ http://localhost:3000/api/doctors → shows doctors (JSON)
+
+✅ http://localhost:3000/api/appointments → shows appointments (JSON)
+if 'curl' is not recognized error - then use powershell
+
+index.js
+const express = require('express');
+const logger = require('./middleware/logger');
+const appointmentRoutes = require('./routes/appointmentRoutes');
+
+const app = express();
+const PORT = 3000;
+
+// Middleware
+app.use(express.json());       // parse JSON bodies
+app.use(logger);               // custom request logger
+
+// Routes
+app.use('/api', appointmentRoutes);   // all routes prefixed with /api
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: err.message });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
+});
+
+routes/appointmentRoutes.js
+const express = require('express');
+const router = express.Router();
+
+// In‑memory data
+let doctors = [
+  { id: 1, name: 'Dr. Arun', specialization: 'Cardiologist' },
+  { id: 2, name: 'Dr. Meena', specialization: 'Dermatologist' }
+];
+
+let appointments = [
+  { id: 1, patientName: 'Alice', doctorId: 1 },
+  { id: 2, patientName: 'Bob', doctorId: 2 }
+];
+
+// GET all doctors
+router.get('/doctors', (req, res) => {
+  res.json(doctors);
+});
+
+// GET all appointments
+router.get('/appointments', (req, res) => {
+  res.json(appointments);
+});
+
+// POST a new appointment
+router.post('/appointments', (req, res) => {
+  const { patientName, doctorId } = req.body;
+  if (!patientName || !doctorId) {
+    return res.status(400).json({ error: 'Patient name and doctor ID are required' });
+  }
+  const newAppointment = {
+    id: appointments.length + 1,
+    patientName,
+    doctorId
+  };
+  appointments.push(newAppointment);
+  res.status(201).json({ message: 'Appointment booked', appointment: newAppointment });
+});
+
+// DELETE an appointment by ID
+router.delete('/appointments/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const initialLength = appointments.length;
+  appointments = appointments.filter(app => app.id !== id);
+  if (appointments.length === initialLength) {
+    return res.status(404).json({ error: 'Appointment not found' });
+  }
+  res.json({ message: 'Appointment cancelled' });
+});
+
+module.exports = router;
+
+middleware/logger.js:
+function logger(req, res, next) {
+  console.log(`${req.method} ${req.url}`);
+  next();
+}
+
+module.exports = logger;
+
+hospital-api/
+  ├── index.js
+  ├── middleware/
+  │   └── logger.js
+  └── routes/
+      └── appointmentRoutes.js
